@@ -1,7 +1,12 @@
 import epub, { Location, Rendition } from "epubjs"
+import Book from "./Book"
+import defaultTheme from "./defaultTheme"
+import hash from "./hash"
 
 const book = epub()
 let rendition: Rendition
+let currentBook: Book
+let renderedOnce = false
 
 const inputElement = document.getElementById("input")!
 
@@ -27,19 +32,20 @@ const openBook = (e: ProgressEvent<FileReader>) => {
 		height: "90%",
 	})
 
-	rendition.themes.default({
-		body: {
-			background: "#303134 !important",
-			color: "#e8eaed !important",
-		},
-		p: {
-			direction: "ltr",
-			"font-family": "'M PLUS Rounded 1c', sans-serif;",
-		},
+	book.opened.then(async () => {
+		currentBook = {
+			title: book.packaging.metadata.title,
+		}
+		document.title = currentBook.title
+		renderedOnce = false
 	})
 
+	rendition.themes.default(defaultTheme)
+	// The type declaration seems to be missing this, but the build passes
+	// alright.
 	//@ts-ignore
 	rendition.themes.fontFamily = "'M PLUS Rounded 1c', sans-serif;"
+
 	rendition.display()
 
 	let keyListener = (e: KeyboardEvent) => {
@@ -54,9 +60,33 @@ const openBook = (e: ProgressEvent<FileReader>) => {
 		}
 	}
 
+	rendition.on("rendered", async () => {
+		if (!renderedOnce) {
+			console.debug("First render, attempting to restore position.")
+			const titleHash = await hash(currentBook.title)
+			const previousLoc = localStorage.getItem(titleHash)
+			if (previousLoc) {
+				console.debug("Found previous loc: ", previousLoc)
+				const loc = JSON.parse(previousLoc) as Location
+				rendition.display(loc.start.href)
+				console.debug("Moved to previous loc")
+			}
+			console.debug(
+				"Done restoring position, flagging that first render is done.",
+			)
+			renderedOnce = true
+		}
+	})
+
 	rendition.on("keyup", keyListener)
-	rendition.on("relocated", (location: Location) => {
-		console.log(location)
+	rendition.on("relocated", async (location: Location) => {
+		if (renderedOnce) {
+			const titleHash = await hash(currentBook.title)
+			localStorage.setItem(titleHash, JSON.stringify(location))
+			console.debug("Store location in local storage: ", location)
+		} else {
+			console.debug("Skipping write of loc as first render.")
+		}
 	})
 
 	next.addEventListener(
