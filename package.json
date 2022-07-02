@@ -1,0 +1,19 @@
+{
+	"name": "epub_reader",
+	"version": "1.0.0",
+	"description": "An epub reader for japanese epubs based on epub.js",
+	"scripts": {
+		"build": "esbuild src/index.ts --bundle --outfile=dist/out.js",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"epubjs": "^0.3.93",
+		"esbuild": "^0.14.48",
+		"typescript": "^4.7.4"
+	},
+	"devDependencies": {
+		"prettier": "2.7.1"
+	}
+}
